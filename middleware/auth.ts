@@ -1,0 +1,48 @@
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+
+// 定義 JwtPayload 類型
+interface JwtPayload {
+  userId: string;
+  [key: string]: any;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: string;
+        [key: string]: any;
+      };
+    }
+  }
+}
+
+export const authMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  console.log("Auth header:", authHeader);
+  console.log("Received token:", token);
+
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as JwtPayload;
+    console.log("Decoded token:", decoded);
+    req.user = { userId: decoded.userId };
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    res.status(401).json({ message: "Token is not valid" });
+  }
+};
