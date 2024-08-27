@@ -2,8 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
-import userRoutes from "./routes/userRoutes";
-import { errorHandler } from "./middleware/errorHandler";
+import userRoutes from "./src/routes/userRoutes.js";
+import { errorHandler } from "./src/middleware/errorHandler.js";
 
 // Load environment variables from .env file
 dotenv.config();

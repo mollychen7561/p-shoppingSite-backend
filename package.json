@@ -7,9 +7,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "tsx watch server.ts",
-    "debug": "node --inspect -r tsx/cjs server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --loader ts-node/esm --no-warnings src/api/index.ts"
   },
   "keywords": [],
   "author": "",
