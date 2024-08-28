@@ -60,8 +60,15 @@ async function connectToDatabase(retries = 5) {
       return;
     } catch (error) {
       console.error(`Database connection failed (Attempt ${i + 1}):`, error);
+      if (error instanceof Error) {
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        if (error.stack) {
+          console.error("Error stack:", error.stack);
+        }
+      }
       if (i === retries - 1) throw error;
-      // 等待5秒後重試
+      console.log(`Retrying in 5 seconds...`);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
@@ -211,6 +218,38 @@ app.get("/api/debug/network", (req: Request, res: Response) => {
     });
 });
 
+// 數據庫連接測試路由
+app.get("/api/debug/db-connect", async (req: Request, res: Response) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      res.json({
+        status: "Already connected",
+        dbName: mongoose.connection.name
+      });
+    } else {
+      await connectToDatabase();
+      res.json({
+        status: "Connected successfully",
+        dbName: mongoose.connection.name
+      });
+    }
+  } catch (error) {
+    console.error("Database connection test failed:", error);
+    if (error instanceof Error) {
+      res.status(500).json({
+        status: "Connection failed",
+        error: error.message,
+        stack: error.stack
+      });
+    } else {
+      res.status(500).json({
+        status: "Connection failed",
+        error: "An unknown error occurred"
+      });
+    }
+  }
+});
+
 // 404 處理
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
@@ -248,7 +287,10 @@ async function startServer() {
       console.error("Error stack:", error.stack);
     }
     // 不要立即退出，給一些時間讓日誌被發送
-    setTimeout(() => process.exit(1), 1000);
+    setTimeout(() => {
+      console.error("Server start-up failed. Exiting process.");
+      process.exit(1);
+    }, 1000);
   }
 }
 
