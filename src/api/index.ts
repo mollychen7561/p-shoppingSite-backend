@@ -38,10 +38,21 @@ async function connectToDatabase() {
     throw new Error("MongoDB URI is not defined");
   }
   try {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000
+    });
     console.log(`Connected to MongoDB successfully`);
   } catch (error) {
     console.error("Database connection failed:", error);
+    if (error instanceof Error) {
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+    }
+    console.error(
+      "MongoDB URI:",
+      MONGODB_URI.replace(/\/\/.*@/, "//<credentials>@")
+    );
     throw error;
   }
 }
@@ -55,14 +66,45 @@ app.get("/api", (req: Request, res: Response) => {
   res.send("Welcome to my API");
 });
 
-// 新增的狀態路由
+// 更新的狀態路由
 app.get("/api/status", (req: Request, res: Response) => {
   res.json({
     status: "OK",
     timestamp: new Date(),
     databaseConnection:
-      mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
+      mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+    databaseName: mongoose.connection.name,
+    databaseHost: mongoose.connection.host,
+    nodeVersion: process.version,
+    mongooseVersion: mongoose.version
   });
+});
+
+// 新增的數據庫診斷路由
+app.get("/api/debug/dbstatus", async (req: Request, res: Response) => {
+  try {
+    const status = mongoose.connection.readyState;
+    const statusMap: { [key: number]: string } = {
+      0: "disconnected",
+      1: "connected",
+      2: "connecting",
+      3: "disconnecting"
+    };
+    res.json({
+      status: statusMap[status],
+      dbName: mongoose.connection.name,
+      host: mongoose.connection.host,
+      mongoVersion: mongoose.version,
+      nodeVersion: process.version
+      // Remove the getOptions() call as it's not available
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: "An unknown error occurred" });
+    }
+  }
 });
 
 // 用戶路由
