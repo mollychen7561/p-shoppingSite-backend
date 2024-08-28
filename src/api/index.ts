@@ -2,10 +2,14 @@ import express, { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import dns from "dns";
 import userRoutes from "../routes/userRoutes.js";
 import { errorHandler } from "../middleware/errorHandler.js";
 
 dotenv.config();
+
+// 啟用 Mongoose 調試模式
+mongoose.set("debug", true);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,31 +37,31 @@ const MONGODB_URI =
   process.env.MONGODB_URI ||
   process.env.LOCAL_MONGODB_URI;
 
-async function connectToDatabase() {
+async function connectToDatabase(retries = 5) {
   if (!MONGODB_URI) {
     throw new Error("MongoDB URI is not defined");
   }
-  try {
-    console.log("Attempting to connect to MongoDB...");
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 60000,
-      connectTimeoutMS: 30000
-    });
-    console.log(`Connected to MongoDB successfully`);
-    console.log(`Database Name: ${mongoose.connection.name}`);
-    console.log(`Database Host: ${mongoose.connection.host}`);
-  } catch (error) {
-    console.error("Database connection failed:", error);
-    if (error instanceof Error) {
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(
+        `Attempting to connect to MongoDB... (Attempt ${i + 1} of ${retries})`
+      );
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 75000,
+        connectTimeoutMS: 50000
+      });
+      console.log(`Connected to MongoDB successfully`);
+      console.log(`Database Name: ${mongoose.connection.name}`);
+      console.log(`Database Host: ${mongoose.connection.host}`);
+      return;
+    } catch (error) {
+      console.error(`Database connection failed (Attempt ${i + 1}):`, error);
+      if (i === retries - 1) throw error;
+      // 等待5秒後重試
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
-    console.error(
-      "MongoDB URI used:",
-      MONGODB_URI.replace(/\/\/.*@/, "//<credentials>@")
-    );
-    throw error;
   }
 }
 
@@ -127,10 +131,7 @@ app.get("/api/users/test", (req: Request, res: Response) => {
 
 // 增強的環境變量調試路由
 app.get("/api/debug/env", (req: Request, res: Response) => {
-  const mongoUri =
-    process.env.CLOUD_MONGODB_URI ||
-    process.env.MONGODB_URI ||
-    process.env.LOCAL_MONGODB_URI;
+  const mongoUri = MONGODB_URI;
   res.json({
     NODE_ENV: process.env.NODE_ENV,
     MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not Set",
@@ -142,6 +143,26 @@ app.get("/api/debug/env", (req: Request, res: Response) => {
     PORT: process.env.PORT,
     CORS_ORIGIN: process.env.CORS_ORIGIN
   });
+});
+
+// DNS 檢查路由
+app.get("/api/debug/dns", async (req: Request, res: Response) => {
+  if (!MONGODB_URI) {
+    return res.status(500).json({ error: "MongoDB URI is not defined" });
+  }
+
+  try {
+    const mongoHost = new URL(MONGODB_URI).hostname;
+    dns.resolve(mongoHost, (err, addresses) => {
+      if (err) {
+        res.status(500).json({ error: err.message, mongoHost });
+      } else {
+        res.json({ resolved: true, mongoHost, addresses });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to parse MongoDB URI" });
+  }
 });
 
 // 404 處理
@@ -159,6 +180,14 @@ async function startServer() {
     console.log("Node.js version:", process.version);
     console.log("Mongoose version:", mongoose.version);
     console.log("Environment:", process.env.NODE_ENV);
+    if (MONGODB_URI) {
+      console.log(
+        "Effective MongoDB URI:",
+        MONGODB_URI.replace(/\/\/.*@/, "//<credentials>@")
+      );
+    } else {
+      console.error("MongoDB URI is not defined");
+    }
 
     await connectToDatabase();
 
@@ -172,7 +201,7 @@ async function startServer() {
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
     }
-    // 給一些時間讓日誌被發送
+    // 不要立即退出，給一些時間讓日誌被發送
     setTimeout(() => process.exit(1), 1000);
   }
 }
