@@ -29,8 +29,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // 數據庫連接
 const MONGODB_URI =
-  process.env.MONGODB_URI ||
   process.env.CLOUD_MONGODB_URI ||
+  process.env.MONGODB_URI ||
   process.env.LOCAL_MONGODB_URI;
 
 async function connectToDatabase() {
@@ -38,11 +38,15 @@ async function connectToDatabase() {
     throw new Error("MongoDB URI is not defined");
   }
   try {
+    console.log("Attempting to connect to MongoDB...");
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 60000,
+      connectTimeoutMS: 30000
     });
     console.log(`Connected to MongoDB successfully`);
+    console.log(`Database Name: ${mongoose.connection.name}`);
+    console.log(`Database Host: ${mongoose.connection.host}`);
   } catch (error) {
     console.error("Database connection failed:", error);
     if (error instanceof Error) {
@@ -50,7 +54,7 @@ async function connectToDatabase() {
       console.error("Error message:", error.message);
     }
     console.error(
-      "MongoDB URI:",
+      "MongoDB URI used:",
       MONGODB_URI.replace(/\/\/.*@/, "//<credentials>@")
     );
     throw error;
@@ -96,7 +100,6 @@ app.get("/api/debug/dbstatus", async (req: Request, res: Response) => {
       host: mongoose.connection.host,
       mongoVersion: mongoose.version,
       nodeVersion: process.version
-      // Remove the getOptions() call as it's not available
     });
   } catch (error) {
     if (error instanceof Error) {
@@ -122,12 +125,20 @@ app.get("/api/users/test", (req: Request, res: Response) => {
   });
 });
 
+// 增強的環境變量調試路由
 app.get("/api/debug/env", (req: Request, res: Response) => {
+  const mongoUri =
+    process.env.CLOUD_MONGODB_URI ||
+    process.env.MONGODB_URI ||
+    process.env.LOCAL_MONGODB_URI;
   res.json({
     NODE_ENV: process.env.NODE_ENV,
     MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not Set",
     CLOUD_MONGODB_URI: process.env.CLOUD_MONGODB_URI ? "Set" : "Not Set",
     LOCAL_MONGODB_URI: process.env.LOCAL_MONGODB_URI ? "Set" : "Not Set",
+    EFFECTIVE_MONGODB_URI: mongoUri
+      ? mongoUri.replace(/\/\/.*@/, "//<credentials>@")
+      : "Not Set",
     PORT: process.env.PORT,
     CORS_ORIGIN: process.env.CORS_ORIGIN
   });
@@ -147,8 +158,10 @@ async function startServer() {
     console.log("Starting server...");
     console.log("Node.js version:", process.version);
     console.log("Mongoose version:", mongoose.version);
-    console.log("Attempting to connect to database...");
+    console.log("Environment:", process.env.NODE_ENV);
+
     await connectToDatabase();
+
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
@@ -159,7 +172,8 @@ async function startServer() {
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
     }
-    process.exit(1);
+    // 給一些時間讓日誌被發送
+    setTimeout(() => process.exit(1), 1000);
   }
 }
 
