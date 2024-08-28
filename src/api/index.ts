@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import dns from "dns";
+import https from "https";
+import { promisify } from "util";
 import userRoutes from "../routes/userRoutes.js";
 import { errorHandler } from "../middleware/errorHandler.js";
 
@@ -145,24 +147,68 @@ app.get("/api/debug/env", (req: Request, res: Response) => {
   });
 });
 
-// DNS 檢查路由
+// 更新的 DNS 檢查路由
+const resolveSrv = promisify(dns.resolveSrv);
+const resolve = promisify(dns.resolve);
+
 app.get("/api/debug/dns", async (req: Request, res: Response) => {
   if (!MONGODB_URI) {
     return res.status(500).json({ error: "MongoDB URI is not defined" });
   }
 
   try {
-    const mongoHost = new URL(MONGODB_URI).hostname;
-    dns.resolve(mongoHost, (err, addresses) => {
-      if (err) {
-        res.status(500).json({ error: err.message, mongoHost });
-      } else {
-        res.json({ resolved: true, mongoHost, addresses });
-      }
-    });
+    const url = new URL(MONGODB_URI);
+    const mongoHost = url.hostname;
+
+    let result: any = { mongoHost };
+
+    try {
+      // 嘗試 SRV 記錄解析
+      const srvRecords = await resolveSrv(`_mongodb._tcp.${mongoHost}`);
+      result.srvRecords = srvRecords;
+    } catch (srvError) {
+      result.srvError = (srvError as Error).message;
+    }
+
+    try {
+      // 嘗試 A 記錄解析
+      const addresses = await resolve(mongoHost);
+      result.addresses = addresses;
+    } catch (aError) {
+      result.aError = (aError as Error).message;
+    }
+
+    if (!result.srvRecords && !result.addresses) {
+      res.status(500).json({
+        error: "Failed to resolve both SRV and A records",
+        details: result
+      });
+    } else {
+      res.json(result);
+    }
   } catch (error) {
     res.status(500).json({ error: "Failed to parse MongoDB URI" });
   }
+});
+
+// 網絡連接檢查路由
+app.get("/api/debug/network", (req: Request, res: Response) => {
+  const testUrl = "https://www.mongodb.com";
+
+  https
+    .get(testUrl, (response) => {
+      res.json({
+        status: "success",
+        statusCode: response.statusCode,
+        headers: response.headers
+      });
+    })
+    .on("error", (error) => {
+      res.status(500).json({
+        status: "error",
+        message: error.message
+      });
+    });
 });
 
 // 404 處理
