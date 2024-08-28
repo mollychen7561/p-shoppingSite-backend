@@ -50,9 +50,24 @@ async function connectToDatabase() {
 
 // CORS middleware setup
 // This allows the API to be called from different origins
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3002",
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        var msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true
   })
 );
@@ -101,7 +116,7 @@ app.use((req: Request, res: Response) => {
 app.use(errorHandler);
 
 // Server startup
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, () => {
   console.log(
     `Server is running on port ${PORT} in ${
