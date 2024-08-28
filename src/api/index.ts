@@ -122,6 +122,17 @@ app.get("/api/users/test", (req: Request, res: Response) => {
   });
 });
 
+app.get("/api/debug/env", (req: Request, res: Response) => {
+  res.json({
+    NODE_ENV: process.env.NODE_ENV,
+    MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not Set",
+    CLOUD_MONGODB_URI: process.env.CLOUD_MONGODB_URI ? "Set" : "Not Set",
+    LOCAL_MONGODB_URI: process.env.LOCAL_MONGODB_URI ? "Set" : "Not Set",
+    PORT: process.env.PORT,
+    CORS_ORIGIN: process.env.CORS_ORIGIN
+  });
+});
+
 // 404 處理
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
@@ -133,12 +144,21 @@ app.use(errorHandler);
 // 連接數據庫並啟動服務器
 async function startServer() {
   try {
+    console.log("Starting server...");
+    console.log("Node.js version:", process.version);
+    console.log("Mongoose version:", mongoose.version);
+    console.log("Attempting to connect to database...");
     await connectToDatabase();
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
+    if (error instanceof Error) {
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     process.exit(1);
   }
 }
