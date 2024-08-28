@@ -5,9 +5,9 @@
   "description": "This is a shopping site application built with Next.js, TypeScript, Redux, Tailwind CSS, Sass for the frontend and Node.js, MongoDB for the backend.",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "nodemon --exec node --loader ts-node/esm src/api/index.ts"
+    "start": "node dist/api/index.js",
+    "dev": "ts-node src/api/index.ts"
   },
   "keywords": [],
   "author": "",
