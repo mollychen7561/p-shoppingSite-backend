@@ -5,8 +5,8 @@ import cors from "cors";
 import dns from "dns";
 import https from "https";
 import { promisify } from "util";
-import userRoutes from "../routes/userRoutes.js";
-import { errorHandler } from "../middleware/errorHandler.js";
+import userRoutes from "../../src/routes/userRoutes.js";
+import { errorHandler } from "../../src/middleware/errorHandler.js";
 
 dotenv.config();
 

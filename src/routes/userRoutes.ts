@@ -15,8 +15,8 @@ import {
   mergeCart,
   createOrder,
   getOrders
-} from "../controllers/userController.js";
-import { authMiddleware } from "../middleware/auth.js";
+} from "../../src/controllers/userController.js";
+import { authMiddleware } from "../../src/middleware/auth.js";
 
 const router = Router();
 

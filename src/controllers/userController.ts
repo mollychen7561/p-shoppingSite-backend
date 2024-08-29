@@ -9,7 +9,7 @@ import User, {
   IOrderItem,
   IShippingInfo,
   BaseOrder
-} from "../models/UserModel.js";
+} from "../../src/models/UserModel.js";
 import dotenv from "dotenv";
 dotenv.config();
 
