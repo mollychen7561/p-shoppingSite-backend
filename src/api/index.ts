@@ -10,11 +10,41 @@ import { errorHandler } from "../middleware/errorHandler.js";
 
 dotenv.config();
 
-// 啟用 Mongoose 調試模式
 mongoose.set("debug", true);
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// 優化的數據庫連接邏輯
+let cachedDb: mongoose.Connection | null = null;
+
+async function connectToDatabase() {
+  if (cachedDb) {
+    return cachedDb;
+  }
+
+  const MONGODB_URI =
+    process.env.MONGODB_URI ||
+    process.env.CLOUD_MONGODB_URI ||
+    process.env.LOCAL_MONGODB_URI;
+
+  if (!MONGODB_URI) {
+    throw new Error("MongoDB URI is not defined");
+  }
+
+  try {
+    const conn = await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000
+    });
+    cachedDb = conn.connection;
+    console.log(`Connected to MongoDB: ${cachedDb.name}`);
+    return cachedDb;
+  } catch (error) {
+    console.error("Database connection failed:", error);
+    throw error;
+  }
+}
 
 // CORS 設置
 const allowedOrigins = [
@@ -27,14 +57,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // 允許沒有 origin 的請求
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        var msg =
-          "The CORS policy for this site does not allow access from the specified Origin.";
-        return callback(new Error(msg), false);
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
       }
-      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -44,68 +71,31 @@ app.use(
 
 app.options("*", cors());
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
-
+// 中間件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 日誌中間件
+// 性能監控中間件
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.originalUrl} - ${duration}ms`);
+  });
   next();
 });
 
-// 數據庫連接
-const MONGODB_URI =
-  process.env.CLOUD_MONGODB_URI ||
-  process.env.MONGODB_URI ||
-  process.env.LOCAL_MONGODB_URI;
-
-async function connectToDatabase(retries = 5) {
-  if (!MONGODB_URI) {
-    throw new Error("MongoDB URI is not defined");
+// 確保數據庫連接
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    next(error);
   }
+});
 
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(
-        `Attempting to connect to MongoDB... (Attempt ${i + 1} of ${retries})`
-      );
-      await mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 30000,
-        socketTimeoutMS: 75000,
-        connectTimeoutMS: 50000
-      });
-      console.log(`Connected to MongoDB successfully`);
-      console.log(`Database Name: ${mongoose.connection.name}`);
-      console.log(`Database Host: ${mongoose.connection.host}`);
-      return;
-    } catch (error) {
-      console.error(`Database connection failed (Attempt ${i + 1}):`, error);
-      if (error instanceof Error) {
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        if (error.stack) {
-          console.error("Error stack:", error.stack);
-        }
-      }
-      if (i === retries - 1) throw error;
-      console.log(`Retrying in 5 seconds...`);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-  }
-}
-
-// 根路由
+// 路由
 app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to the root of my API");
 });
@@ -114,7 +104,6 @@ app.get("/api", (req: Request, res: Response) => {
   res.send("Welcome to my API");
 });
 
-// 更新的狀態路由
 app.get("/api/status", (req: Request, res: Response) => {
   res.json({
     status: "OK",
@@ -128,7 +117,6 @@ app.get("/api/status", (req: Request, res: Response) => {
   });
 });
 
-// 新增的數據庫診斷路由
 app.get("/api/debug/dbstatus", async (req: Request, res: Response) => {
   try {
     const status = mongoose.connection.readyState;
@@ -154,24 +142,13 @@ app.get("/api/debug/dbstatus", async (req: Request, res: Response) => {
   }
 });
 
-// 用戶路由
 app.use("/api/users", userRoutes);
 
-// 新增的測試用戶路由
-app.get("/api/users/test", (req: Request, res: Response) => {
-  res.json({
-    message: "This is a test endpoint for the users route",
-    data: {
-      userId: "test123",
-      username: "testuser",
-      email: "test@example.com"
-    }
-  });
-});
-
-// 增強的環境變量調試路由
 app.get("/api/debug/env", (req: Request, res: Response) => {
-  const mongoUri = MONGODB_URI;
+  const mongoUri =
+    process.env.MONGODB_URI ||
+    process.env.CLOUD_MONGODB_URI ||
+    process.env.LOCAL_MONGODB_URI;
   res.json({
     NODE_ENV: process.env.NODE_ENV,
     MONGODB_URI: process.env.MONGODB_URI ? "Set" : "Not Set",
@@ -185,11 +162,14 @@ app.get("/api/debug/env", (req: Request, res: Response) => {
   });
 });
 
-// 更新的 DNS 檢查路由
 const resolveSrv = promisify(dns.resolveSrv);
 const resolve = promisify(dns.resolve);
 
 app.get("/api/debug/dns", async (req: Request, res: Response) => {
+  const MONGODB_URI =
+    process.env.MONGODB_URI ||
+    process.env.CLOUD_MONGODB_URI ||
+    process.env.LOCAL_MONGODB_URI;
   if (!MONGODB_URI) {
     return res.status(500).json({ error: "MongoDB URI is not defined" });
   }
@@ -201,7 +181,6 @@ app.get("/api/debug/dns", async (req: Request, res: Response) => {
     let result: any = { mongoHost };
 
     try {
-      // 嘗試 SRV 記錄解析
       const srvRecords = await resolveSrv(`_mongodb._tcp.${mongoHost}`);
       result.srvRecords = srvRecords;
     } catch (srvError) {
@@ -209,7 +188,6 @@ app.get("/api/debug/dns", async (req: Request, res: Response) => {
     }
 
     try {
-      // 嘗試 A 記錄解析
       const addresses = await resolve(mongoHost);
       result.addresses = addresses;
     } catch (aError) {
@@ -229,7 +207,6 @@ app.get("/api/debug/dns", async (req: Request, res: Response) => {
   }
 });
 
-// 網絡連接檢查路由
 app.get("/api/debug/network", (req: Request, res: Response) => {
   const testUrl = "https://www.mongodb.com";
 
@@ -249,38 +226,6 @@ app.get("/api/debug/network", (req: Request, res: Response) => {
     });
 });
 
-// 數據庫連接測試路由
-app.get("/api/debug/db-connect", async (req: Request, res: Response) => {
-  try {
-    if (mongoose.connection.readyState === 1) {
-      res.json({
-        status: "Already connected",
-        dbName: mongoose.connection.name
-      });
-    } else {
-      await connectToDatabase();
-      res.json({
-        status: "Connected successfully",
-        dbName: mongoose.connection.name
-      });
-    }
-  } catch (error) {
-    console.error("Database connection test failed:", error);
-    if (error instanceof Error) {
-      res.status(500).json({
-        status: "Connection failed",
-        error: error.message,
-        stack: error.stack
-      });
-    } else {
-      res.status(500).json({
-        status: "Connection failed",
-        error: "An unknown error occurred"
-      });
-    }
-  }
-});
-
 // 404 處理
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
@@ -289,45 +234,11 @@ app.use((req: Request, res: Response) => {
 // 錯誤處理
 app.use(errorHandler);
 
-// 連接數據庫並啟動服務器
-async function startServer() {
-  try {
-    console.log("Starting server...");
-    console.log("Node.js version:", process.version);
-    console.log("Mongoose version:", mongoose.version);
-    console.log("Environment:", process.env.NODE_ENV);
-    if (MONGODB_URI) {
-      console.log(
-        "Effective MongoDB URI:",
-        MONGODB_URI.replace(/\/\/.*@/, "//<credentials>@")
-      );
-    } else {
-      console.error("MongoDB URI is not defined");
-    }
-
-    await connectToDatabase();
-
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    if (error instanceof Error) {
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    // 不要立即退出，給一些時間讓日誌被發送
-    setTimeout(() => {
-      console.error("Server start-up failed. Exiting process.");
-      process.exit(1);
-    }, 1000);
-  }
-}
-
-// 檢查是否直接運行此文件
+// 啟動服務器（僅在直接運行此文件時）
 if (import.meta.url === `file://${process.argv[1]}`) {
-  startServer();
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
 }
 
 export default app;
