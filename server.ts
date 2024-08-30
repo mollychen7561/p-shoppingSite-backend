@@ -6,7 +6,7 @@ import app from "./src/api/index";
 // Load environment variables from .env file
 dotenv.config();
 
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 5001;
 
 // Additional local development settings
 if (process.env.NODE_ENV === "development") {

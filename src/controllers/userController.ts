@@ -52,21 +52,23 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 // User login
 export const login = async (req: Request, res: Response): Promise<void> => {
+  console.log("Received login request body:", JSON.stringify(req.body));
   try {
-    // Extract email and password from request body
     const { email, password } = req.body;
 
     // Validate input
     if (!email || !password) {
+      console.log("Login failed: Email or password missing");
       res.status(400).json({ message: "Email and password are required" });
       return;
     }
 
-    // Search for user in database
+    console.log("Searching for user with email:", email);
     const user = await User.findOne({ email }).exec();
 
     // If user not found, return error
     if (!user) {
+      console.log("Login failed: User not found");
       res.status(400).json({ message: "Invalid email or password" });
       return;
     }
@@ -74,6 +76,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log("Login failed: Password incorrect"); // 新增這行
       res.status(400).json({ message: "Invalid email or password" });
       return;
     }
@@ -83,6 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       expiresIn: "4h"
     });
 
+    console.log("Login successful for user:", email);
     // Send successful login response
     res.status(200).json({
       message: "Login successful",
@@ -90,8 +94,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       token
     });
   } catch (error) {
-    // Handle any errors
-    console.error("Login error:", error);
+    console.error("Detailed login error:", error);
     handleError(res, error);
   }
 };
