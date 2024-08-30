@@ -26,9 +26,6 @@ export const authMiddleware = (
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  console.log("Auth header:", authHeader);
-  console.log("Received token:", token);
-
   if (!token) {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
@@ -38,11 +35,9 @@ export const authMiddleware = (
       token,
       process.env.JWT_SECRET as string
     ) as JwtPayload;
-    console.log("Decoded token:", decoded);
     req.user = { userId: decoded.userId };
     next();
   } catch (error) {
-    console.error("Token verification failed:", error);
     res.status(401).json({ message: "Token is not valid" });
   }
 };

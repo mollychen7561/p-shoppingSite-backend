@@ -12,8 +12,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 資料庫連接
-mongoose.set("debug", true);
+// Database connection
+// mongoose.set("debug", true);
 let cachedDb: mongoose.Connection | null = null;
 
 async function connectToDatabase() {
@@ -36,7 +36,6 @@ async function connectToDatabase() {
       socketTimeoutMS: 45000
     });
     cachedDb = conn.connection;
-    console.log(`Connected to MongoDB: ${cachedDb.name}`);
     return cachedDb;
   } catch (error) {
     console.error("Database connection failed:", error);
@@ -44,7 +43,7 @@ async function connectToDatabase() {
   }
 }
 
-// CORS 設置
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3002",
@@ -72,7 +71,7 @@ app.options("*", cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 性能監控中間件
+// Performance monitoring middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   res.on("finish", () => {
@@ -82,7 +81,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// 確保數據庫連接
+// Ensure database connection
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   try {
     await connectToDatabase();
@@ -92,7 +91,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// 路由定義
+// Route definitions
 app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to the root of my API");
 });
@@ -223,16 +222,16 @@ app.get("/api/debug/network", (req: Request, res: Response) => {
     });
 });
 
-// 錯誤處理
-// 404 處理
+// Error handling
+// 404 handling
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// 錯誤處理中間件
+// Error handling middleware
 app.use(errorHandler);
 
-// 服務器啟動
+// Server startup
 if (import.meta.url === `file://${process.argv[1]}`) {
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

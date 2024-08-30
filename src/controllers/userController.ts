@@ -15,7 +15,7 @@ dotenv.config();
 
 // Helper function to handle errors
 const handleError = (res: Response, error: unknown) => {
-  console.error("Error:", error);
+  // console.error("Error:", error);
   res.status(500).json({
     message: "Server error",
     error: error instanceof Error ? error.message : String(error)
@@ -29,14 +29,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     if (!name || !email || !password) {
       res
-        .status(400)
+        .status(401)
         .json({ message: "Name, email, and password are required" });
       return;
     }
 
     const existingUser = await User.findOne({ email }).exec();
     if (existingUser) {
-      res.status(400).json({ message: "Email already in use" });
+      res.status(401).json({ message: "Email already in use" });
       return;
     }
 
@@ -52,32 +52,27 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 // User login
 export const login = async (req: Request, res: Response): Promise<void> => {
-  console.log("Received login request body:", JSON.stringify(req.body));
   try {
     const { email, password } = req.body;
 
     // Validate input
     if (!email || !password) {
-      console.log("Login failed: Email or password missing");
       res.status(400).json({ message: "Email and password are required" });
       return;
     }
 
-    console.log("Searching for user with email:", email);
     const user = await User.findOne({ email }).exec();
 
     // If user not found, return error
     if (!user) {
-      console.log("Login failed: User not found");
-      res.status(400).json({ message: "Invalid email or password" });
+      res.status(401).json({ message: "Invalid email" });
       return;
     }
 
     // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log("Login failed: Password incorrect"); // 新增這行
-      res.status(400).json({ message: "Invalid email or password" });
+      res.status(401).json({ message: "Invalid password" });
       return;
     }
 
@@ -86,7 +81,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       expiresIn: "4h"
     });
 
-    console.log("Login successful for user:", email);
     // Send successful login response
     res.status(200).json({
       message: "Login successful",
