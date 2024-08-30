@@ -9,13 +9,11 @@ import userRoutes from "../../src/routes/userRoutes.js";
 import { errorHandler } from "../../src/middleware/errorHandler.js";
 
 dotenv.config();
-
-mongoose.set("debug", true);
-
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 優化的數據庫連接邏輯
+// 資料庫連接
+mongoose.set("debug", true);
 let cachedDb: mongoose.Connection | null = null;
 
 async function connectToDatabase() {
@@ -71,7 +69,6 @@ app.use(
 
 app.options("*", cors());
 
-// 中間件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -95,7 +92,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// 路由
+// 路由定義
 app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to the root of my API");
 });
@@ -226,15 +223,16 @@ app.get("/api/debug/network", (req: Request, res: Response) => {
     });
 });
 
+// 錯誤處理
 // 404 處理
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// 錯誤處理
+// 錯誤處理中間件
 app.use(errorHandler);
 
-// 啟動服務器（僅在直接運行此文件時）
+// 服務器啟動
 if (import.meta.url === `file://${process.argv[1]}`) {
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
