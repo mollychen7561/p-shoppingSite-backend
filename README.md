@@ -6,18 +6,43 @@ This back-end system provides the necessary API interface for the front-end e-co
 
 <center><img src="https://github.com/user-attachments/assets/245ba455-630f-44a8-8f63-a2bb1cb2a2f1" width="60%"/></center>
 
-
 ## Features
+User Management:
 
-- The homepage displays product carousels and category links, and users can click on the products or categories they are interested in.
-- The product page displays all products. Users can search for the desired product using the search bar or click on a product category from the category bar on the left to filter the products.
-- Each product has its own page that shows the product name, price, and description. Users can click the “Heart” icon to save products they are interested in and view them on their personal page. After selecting the quantity and adding the product to the shopping cart, users can open the shopping cart page to view the products they have added, along with the quantity and total price. Additionally, relevant product recommendations are provided.
-- Modals for user login and registration are available.
-- Users can proceed to the checkout page to confirm their shopping list, apply coupons, and provide recipient information for delivery.
-- The About page briefly describes this shopping website and the types of products it offers.
-- The website is built with responsive design, ensuring a seamless experience across devices of all sizes, whether on mobile, tablet, or desktop.
+	•	User registration, login, and logout
+
+Product Management:
+
+	•	Retrieve product list
+	•	Get details of a specific product
+	•	Fetch products by category
+
+Shopping Cart:
+
+	•	Add items to the cart
+	•	Update item quantities in the cart
+	•	Remove items from the cart
+	•	View cart contents
+	•	Clear the cart
+
+Order Management:
+
+	•	Create orders
+	•	View order history for a user
+
+Favorites:
+
+	•	Add items to favorites
+	•	Remove items from favorites
+	•	View favorites list
+
 
 https://github.com/user-attachments/assets/22b943a6-992c-41f5-a699-f1376085a576
+
+## Demo Link
+> https://p-shopping-site-backend.vercel.app/
+
+<center><img src="https://github.com/user-attachments/assets/245ba455-630f-44a8-8f63-a2bb1cb2a2f1" width="60%"/></center>
 
 ## Tools
 
@@ -35,6 +60,8 @@ https://github.com/user-attachments/assets/22b943a6-992c-41f5-a699-f1376085a576
   - MongoDB Atlas
   - JWT
   - bcrypt 
+
+## Demo 
 
 ## Getting Started
 
@@ -59,5 +86,6 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ### 📌 Notice
 If you want to deploy to vercel and connect to MongoDB Atlas:
-1. Go to the setting -> Integrations -> MongoDB Atlas Connect Account of the vercel project.
-2. MongoDB Atlas -> Database Access -> Use vercel-admin-user and its password in vercel as the MONGODB_URI of the project environment variable. Remember to add your JWT_SECRET and CORS_ORIGIN (front-end URL).
+1. The frontend and backend may need to be deployed separately, as deploying them together often results in failure for me.
+2. Go to backend project setting -> Integrations -> MongoDB Atlas Connect Account of the vercel project.
+3. Go to MongoDB Atlas -> Database Access -> Use vercel-admin-user and its password in vercel as the MONGODB_URI of the project environment variable. Remember to add your JWT_SECRET and CORS_ORIGIN (front-end URL).
