@@ -7,45 +7,36 @@ This back-end system provides the necessary API interface for the front-end e-co
 <center><img src="https://github.com/user-attachments/assets/245ba455-630f-44a8-8f63-a2bb1cb2a2f1" width="60%"/></center>
 
 ## Features
-User Management:
+### User Management:
+- User registration, login, and logout
 
-	•	User registration, login, and logout
+### Product Management:
+- Retrieve product list
+- Get details of a specific product
+- Fetch products by category
 
-Product Management:
+### Shopping Cart:
+- Add items to the cart
+- Update item quantities in the cart
+- Remove items from the cart
+- View cart contents
+- Clear the cart
 
-	•	Retrieve product list
-	•	Get details of a specific product
-	•	Fetch products by category
+### Order Management:
+- Create orders
+- View order history for a user
 
-Shopping Cart:
-
-	•	Add items to the cart
-	•	Update item quantities in the cart
-	•	Remove items from the cart
-	•	View cart contents
-	•	Clear the cart
-
-Order Management:
-
-	•	Create orders
-	•	View order history for a user
-
-Favorites:
-
-	•	Add items to favorites
-	•	Remove items from favorites
-	•	View favorites list
-
+### Favorites:
+- Add items to favorites
+- Remove items from favorites
+- View favorites list
 
 https://github.com/user-attachments/assets/22b943a6-992c-41f5-a699-f1376085a576
 
 ## Demo Link
 > https://p-shopping-site-backend.vercel.app/
 
-<center><img src="https://github.com/user-attachments/assets/245ba455-630f-44a8-8f63-a2bb1cb2a2f1" width="60%"/></center>
-
 ## Tools
-
 - frontend
   - TypeScript
   - React
@@ -60,8 +51,6 @@ https://github.com/user-attachments/assets/22b943a6-992c-41f5-a699-f1376085a576
   - MongoDB Atlas
   - JWT
   - bcrypt 
-
-## Demo 
 
 ## Getting Started
 
